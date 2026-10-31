@@ -5,6 +5,8 @@ import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.ByteBuffer;
+import java.nio.charset.CharacterCodingException;
 import java.nio.charset.Charset;
 import java.nio.charset.StandardCharsets;
 import java.nio.charset.UnsupportedCharsetException;
@@ -81,9 +83,16 @@ public class FileUtil {
     String content;
     try (InputStream inputStream = new FileInputStream(pomFile)) {
       var charset = Charset.forName(encoding);
-      content = new String(inputStream.readAllBytes(), charset);
+      // A decoder reports malformed input, new String(bytes, charset) would silently replace it
+      content = charset.newDecoder().decode(ByteBuffer.wrap(inputStream.readAllBytes())).toString();
     } catch (UnsupportedCharsetException ex) {
       throw new FailureException("Could not handle encoding: " + encoding, ex);
+    } catch (CharacterCodingException ex) {
+      throw new FailureException(
+          String.format(
+              "Could not read pom file %s with encoding %s. Please set the encoding parameter to match the pom file",
+              pomFile.getAbsolutePath(), encoding),
+          ex);
     } catch (IOException ex) {
       throw new FailureException("Could not read pom file: " + pomFile.getAbsolutePath(), ex);
     }

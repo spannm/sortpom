@@ -9,6 +9,8 @@ import static org.mockito.Mockito.spy;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.function.Executable;
@@ -101,6 +103,28 @@ class FileUtilExceptionsTest {
         "Unexpected message",
         thrown.getMessage(),
         is(equalTo("Could not handle encoding: gurka-2000")));
+  }
+
+  @Test
+  void whenPomFileContentDoesNotMatchEncodingAnExceptionShouldBeThrown() throws IOException {
+    Files.write(
+        pomFileTemp.toPath(),
+        "<project><name>Müller</name></project>".getBytes(StandardCharsets.ISO_8859_1));
+
+    var fileUtil = createFileUtil();
+
+    Executable testMethod = fileUtil::getPomFileContent;
+
+    var thrown = assertThrows(FailureException.class, testMethod);
+
+    assertThat(
+        "Unexpected message",
+        thrown.getMessage(),
+        is(
+            equalTo(
+                "Could not read pom file "
+                    + pomFileTemp.getAbsolutePath()
+                    + " with encoding UTF-8. Please set the encoding parameter to match the pom file")));
   }
 
   @Test
